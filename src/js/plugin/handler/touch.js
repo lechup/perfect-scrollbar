@@ -44,6 +44,8 @@ function bindTouchHandler(element, i, supportsTouch, supportsIePointer) {
   var easingLoop = null;
   var inGlobalTouch = false;
   var inLocalTouch = false;
+  var isTap = true;
+  var tapLengthTimeout = null;
 
   function globalTouchStart() {
     inGlobalTouch = true;
@@ -69,7 +71,10 @@ function bindTouchHandler(element, i, supportsTouch, supportsIePointer) {
     }
     return false;
   }
-  function touchStart(e) {
+  function touchStart(e, doNotstopPropagation) {
+    if (doNotstopPropagation === undefined)
+      doNotstopPropagation = true;
+
     if (shouldHandle(e)) {
       inLocalTouch = true;
 
@@ -82,6 +87,17 @@ function bindTouchHandler(element, i, supportsTouch, supportsIePointer) {
 
       if (easingLoop !== null) {
         clearInterval(easingLoop);
+      }
+
+      if (doNotstopPropagation) {
+        isTap = true;
+        if (tapLengthTimeout) {
+          clearTimeout(tapLengthTimeout);
+        }
+        tapLengthTimeout = setTimeout(function () {
+          isTap = false;
+        }, 200);
+        e.stopPropagation();
       }
     }
   }
@@ -115,8 +131,16 @@ function bindTouchHandler(element, i, supportsTouch, supportsIePointer) {
       }
     }
   }
-  function touchEnd() {
+  function touchEnd(e) {
     if (!inGlobalTouch && inLocalTouch) {
+      if (isTap) {
+        isTap=false;
+        touchStart(e, false);
+        touchEnd(e);
+        e.stopPropagation();
+        return;
+      }
+
       inLocalTouch = false;
 
       clearInterval(easingLoop);
